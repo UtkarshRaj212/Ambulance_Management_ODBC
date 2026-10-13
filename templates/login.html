@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ambulance Management - Login</title>
+    <title>Ambulance Management System - Login</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=21">
+    <link rel="stylesheet" href="static/style.css">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
@@ -28,49 +28,19 @@
         <h1>Ambulance Management System</h1>
         <p class="subtitle">Ambulance Management Portal</p>
 
-        <form method="POST">
-            <label>Username</label>
-            <input type="text" name="username" placeholder="Enter username" required>
+        <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+            <label for="loginUsername">Username</label>
+            <input type="text" id="loginUsername" name="username" placeholder="Enter username (e.g. admin)" required autocomplete="username">
 
-            <label>Password</label>
-            <input type="password" name="password" placeholder="Enter password" required>
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" name="password" placeholder="Enter password (e.g. admin123)" required autocomplete="current-password">
 
-            {% if error %}
-                <p class="error">{{ error }}</p>
-            {% endif %}
+            <p id="loginError" class="error" style="display: none;"></p>
 
-            <button type="submit">Login</button>
+            <button type="submit" id="loginSubmitBtn">Login</button>
         </form>
     </div>
 
-    <script>
-        function toggleTheme() {
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const nextTheme = isDark ? 'light' : 'dark';
-            applyTheme(nextTheme);
-        }
-        function applyTheme(theme) {
-            const icon = document.getElementById('themeToggleIcon');
-            const text = document.getElementById('themeToggleText');
-            if (theme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                document.body.classList.add('dark-mode');
-                localStorage.setItem('theme', 'dark');
-                if (icon) icon.innerText = '☀️';
-                if (text) text.innerText = 'Light Mode';
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-                document.body.classList.remove('dark-mode');
-                localStorage.setItem('theme', 'light');
-                if (icon) icon.innerText = '🌙';
-                if (text) text.innerText = 'Dark Mode';
-            }
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
-        });
-    </script>
+    <script src="static/script.js"></script>
 </body>
 </html>

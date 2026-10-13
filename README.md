@@ -230,6 +230,20 @@ Open your browser and navigate to the URL to access the login page.
 
 ---
 
+### ⚡ Deployment on Vercel (Static Hosting & In-Browser DB)
+
+The system is fully compatible with **Vercel** and static web hosts. When deployed without a Python backend, it automatically and transparently operates using an embedded **in-browser database** (`localStorage`):
+
+1. **Push to GitHub**: Push this repository to your GitHub account.
+2. **Import to Vercel**: Connect your repository in the Vercel dashboard.
+3. **Deploy**: Leave build settings default (Static Site). Vercel reads `vercel.json` and immediately deploys the site.
+4. **Zero-Configuration In-Browser Database**:
+   - The application automatically initializes and seeds mock fleet and driver records if the browser database is empty.
+   - All **DDL** (`ALTER TABLE ADD/DROP COLUMN/RENAME`) and **DML** (`Insert`, `Update`, `Delete`) operations execute seamlessly.
+   - The UI runs cleanly without any offline or degraded indicators.
+
+---
+
 ## ⚙️ Configuration & Environment Variables
 
 The application can be configured using environment variables in a `.env` file or exported in your terminal session:

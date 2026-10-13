@@ -150,6 +150,35 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+
+    user = APP_USERS.get(username)
+    if user and (password == user.get("password") or check_password_hash(user.get("password_hash", ""), password)):
+        session.clear()
+        session["logged_in"] = True
+        session["username"] = username
+        session["role"] = user.get("role", "admin")
+        session.permanent = True
+        return jsonify({
+            "success": True,
+            "username": username,
+            "role": user.get("role", "admin"),
+            "redirect": "/dashboard"
+        }), 200
+
+    return jsonify({"success": False, "message": "Invalid username or password."}), 401
+
+
+@app.route("/api/logout", methods=["POST", "GET"])
+def api_logout():
+    session.clear()
+    return jsonify({"success": True, "redirect": "/"}), 200
+
+
 # ============================================================
 # SYSTEM STATUS & FALLBACK DATA STORE
 # ============================================================

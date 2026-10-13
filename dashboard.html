@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambulance Management System - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+</head>
+
+<body>
+
+    <header>
+        <div class="header-left">
+            <h1>Ambulance Management System</h1>
+        </div>
+        <div class="header-right">
+            <span id="userRoleBadge" class="user-role-badge">Logged in: <strong id="headerUsername">Admin</strong> (<span id="headerUserRole">Admin</span>)</span>
+            <a href="javascript:void(0)" onclick="handleLogout()" class="logout">Logout</a>
+            <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
+                <span id="themeToggleIcon">🌙</span>
+                <span id="themeToggleText">Dark Mode</span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- ================================================= -->
+        <!-- SUMMARY OVERVIEW -->
+        <!-- ================================================= -->
+        <div class="summary-container">
+            <div class="summary-card" id="cardTotalAmbulances">
+                <span class="summary-label">Total Ambulances</span>
+                <span class="summary-count" id="summaryTotalAmbulances">0</span>
+            </div>
+            <div class="summary-card" id="cardAvailableAmbulances">
+                <span class="summary-label">Available Ambulances</span>
+                <span class="summary-count" id="summaryAvailableAmbulances">0</span>
+            </div>
+            <div class="summary-card" id="cardTotalDrivers">
+                <span class="summary-label">Total Drivers</span>
+                <span class="summary-count" id="summaryTotalDrivers">0</span>
+            </div>
+            <div class="summary-card" id="cardAvailableDrivers">
+                <span class="summary-label">Available Drivers</span>
+                <span class="summary-count" id="summaryAvailableDrivers">0</span>
+            </div>
+        </div>
+
+        <!-- ================================================= -->
+        <!-- AMBULANCE MANAGEMENT -->
+        <!-- ================================================= -->
+
+        <div id="ambulanceSection">
+            <div class="top-section">
+                <div class="section-title-group">
+                    <h2>Ambulance Management</h2>
+                    <button onclick="toggleTableSchema('AMBULANCE')" class="btn-schema-edit"
+                        title="Execute DDL Commands on AMBULANCE Table">⚙️ DDL Commands</button>
+                    <button onclick="loadTableSchema()" class="btn-schema-sync"
+                        title="Sync and Reload Columns from Table Schema">🔄 Sync Columns</button>
+                </div>
+                <div class="controls-group">
+                    <input type="text" id="ambulanceSearch" placeholder="Search Model or ID..." onkeyup="filterAmbulances()"
+                        class="search-input">
+                    <select id="ambulanceFilter" onchange="filterAmbulances()" class="filter-select">
+                        <option value="">All Statuses</option>
+                        <option value="AVAILABLE">Available</option>
+                        <option value="ON DUTY">On Duty</option>
+                        <option value="MAINTENANCE">Maintenance</option>
+                    </select>
+                    <button onclick="openAmbulanceForm()" class="btn-primary">+ Add Ambulance</button>
+                </div>
+            </div>
+
+            <!-- Inline Schema & DDL Commands Panel for Ambulance -->
+            <div id="ambulanceSchemaPanel" class="schema-edit-panel" style="display: none;">
+                <div class="schema-panel-header">
+                    <h3>AMBULANCE Table Structure &amp; DDL Commands</h3>
+                    <button onclick="toggleTableSchema('AMBULANCE')" class="close-panel-btn">&times;</button>
+                </div>
+                <div class="schema-panel-body">
+                    <div class="schema-columns-box">
+                        <h4>Current Columns</h4>
+                        <div id="ambulanceSchemaTable">Loading columns...</div>
+                    </div>
+                    <div class="schema-actions-box">
+                        <h4>Enter DDL Command (AMBULANCE)</h4>
+                        <div class="ddl-ban-notice">
+                            <span>🛡️ <strong>Safety Policy:</strong> Table drop commands (<code>DROP TABLE</code>) are strictly banned. Only column alterations (<code>ALTER TABLE</code>) are permitted.</span>
+                        </div>
+                        <div class="ddl-command-form">
+                            <textarea id="ambulanceDdlInput" class="ddl-cmd-textarea" rows="4"
+                                placeholder="Enter Oracle DDL command (e.g. ALTER TABLE AMBULANCE ADD (GPS_TRACKER VARCHAR2(50));)"></textarea>
+                            <div class="ddl-quick-examples">
+                                <span class="quick-label">Quick Alter Templates:</span>
+                                <button type="button" class="btn-quick-ddl" onclick="setDdlCommand('AMBULANCE', 'ALTER TABLE AMBULANCE ADD (GPS_TRACKER VARCHAR2(50))')">+ Add GPS_TRACKER</button>
+                                <button type="button" class="btn-quick-ddl" onclick="setDdlCommand('AMBULANCE', 'ALTER TABLE AMBULANCE ADD (SEATING_CAPACITY NUMBER)')">+ Add SEATING_CAPACITY</button>
+                                <button type="button" class="btn-quick-ddl" onclick="setDdlCommand('AMBULANCE', 'ALTER TABLE AMBULANCE DROP COLUMN GPS_TRACKER')">- Drop Column GPS_TRACKER</button>
+                            </div>
+                            <div class="ddl-cmd-controls">
+                                <button onclick="executeTableDdl('AMBULANCE')" class="btn-primary ddl-exec-btn">Execute
+                                    Command</button>
+                            </div>
+                            <div id="ambulanceDdlOutput" class="ddl-panel-output" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ambulanceForm" class="form-container">
+                <h3 id="ambulanceFormTitle">Add Ambulance</h3>
+
+                <div class="form-grid" id="ambulanceFormGrid">
+                    <!-- Dynamic boxes rendered from active schema -->
+                </div>
+
+                <div class="form-actions">
+                    <button onclick="saveAmbulance()" class="btn-primary">Save Ambulance</button>
+                    <button onclick="closeAmbulanceForm()" class="cancel">Cancel</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead id="ambulanceTableHead">
+                        <!-- Dynamic columns rendered from active schema -->
+                    </thead>
+                    <tbody id="ambulanceTable">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ================================================= -->
+        <!-- DRIVER MANAGEMENT -->
+        <!-- ================================================= -->
+
+        <div id="driverSection">
+            <div class="top-section driver-section">
+                <div class="section-title-group">
+                    <h2>Driver Management</h2>
+                    <button onclick="toggleTableSchema('DRIVER')" class="btn-schema-edit"
+                        title="Execute DDL Commands on DRIVER Table">⚙️ DDL Commands</button>
+                    <button onclick="loadTableSchema()" class="btn-schema-sync"
+                        title="Sync and Reload Columns from Table Schema">🔄 Sync Columns</button>
+                </div>
+                <div class="controls-group">
+                    <input type="text" id="driverSearch" placeholder="Search Driver Name or ID..." onkeyup="filterDrivers()"
+                        class="search-input">
+                    <select id="driverFilter" onchange="filterDrivers()" class="filter-select">
+                        <option value="">All Statuses</option>
+                        <option value="AVAILABLE">Available</option>
+                        <option value="ON DUTY">On Duty</option>
+                        <option value="OFF DUTY">Off Duty</option>
+                    </select>
+                    <button onclick="openDriverForm()" class="btn-primary">+ Add Driver</button>
+                </div>
+            </div>
+
+            <!-- Inline Schema & DDL Commands Panel for Driver -->
+            <div id="driverSchemaPanel" class="schema-edit-panel" style="display: none;">
+                <div class="schema-panel-header">
+                    <h3>DRIVER Table Structure &amp; DDL Commands</h3>
+                    <button onclick="toggleTableSchema('DRIVER')" class="close-panel-btn">&times;</button>
+                </div>
+                <div class="schema-panel-body">
+                    <div class="schema-columns-box">
+                        <h4>Current Columns</h4>
+                        <div id="driverSchemaTable">Loading columns...</div>
+                    </div>
+                    <div class="schema-actions-box">
+                        <h4>Enter DDL Command (DRIVER)</h4>
+                        <div class="ddl-ban-notice">
+                            <span>🛡️ <strong>Safety Policy:</strong> Table drop commands (<code>DROP TABLE</code>) are strictly banned. Only column alterations (<code>ALTER TABLE</code>) are permitted.</span>
+                        </div>
+                        <div class="ddl-command-form">
+                            <textarea id="driverDdlInput" class="ddl-cmd-textarea" rows="4"
+                                placeholder="Enter Oracle DDL command (e.g. ALTER TABLE DRIVER ADD (BLOOD_GROUP VARCHAR2(10));)"></textarea>
+                            <div class="ddl-quick-examples">
+                                <span class="quick-label">Quick Alter Templates:</span>
+                                <button type="button" class="btn-quick-ddl" onclick="setDdlCommand('DRIVER', 'ALTER TABLE DRIVER ADD (BLOOD_GROUP VARCHAR2(10))')">+ Add BLOOD_GROUP</button>
+                                <button type="button" class="btn-quick-ddl" onclick="setDdlCommand('DRIVER', 'ALTER TABLE DRIVER ADD (EMERGENCY_CONTACT VARCHAR2(20))')">+ Add EMERGENCY_CONTACT</button>
+                                <button type="button" class="btn-quick-ddl" onclick="setDdlCommand('DRIVER', 'ALTER TABLE DRIVER DROP COLUMN BLOOD_GROUP')">- Drop Column BLOOD_GROUP</button>
+                            </div>
+                            <div class="ddl-cmd-controls">
+                                <button onclick="executeTableDdl('DRIVER')" class="btn-primary ddl-exec-btn">Execute
+                                    Command</button>
+                            </div>
+                            <div id="driverDdlOutput" class="ddl-panel-output" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="driverForm" class="form-container">
+                <h3 id="driverFormTitle">Add Driver</h3>
+
+                <div class="form-grid" id="driverFormGrid">
+                    <!-- Dynamic boxes rendered from active schema -->
+                </div>
+
+                <div class="form-actions">
+                    <button onclick="saveDriver()" class="btn-primary">Save Driver</button>
+                    <button onclick="closeDriverForm()" class="cancel">Cancel</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead id="driverTableHead">
+                        <!-- Dynamic columns rendered from active schema -->
+                    </thead>
+                    <tbody id="driverTable">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="static/script.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambulance Management System - Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+</head>
+
+<body class="login-body">
+    <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn login-theme-toggle" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
+        <span id="themeToggleIcon">🌙</span>
+        <span id="themeToggleText">Dark Mode</span>
+    </button>
+
+    <div class="login-container">
+        <h1>Ambulance Management System</h1>
+        <p class="subtitle">Ambulance Management Portal</p>
+
+        <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+            <label for="loginUsername">Username</label>
+            <input type="text" id="loginUsername" name="username" placeholder="Enter username (e.g. admin)" required autocomplete="username">
+
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" name="password" placeholder="Enter password (e.g. admin123)" required autocomplete="current-password">
+
+            <p id="loginError" class="error" style="display: none;"></p>
+
+            <button type="submit" id="loginSubmitBtn">Login</button>
+        </form>
+    </div>
+
+    <script src="static/script.js"></script>
+</body>
+</html>

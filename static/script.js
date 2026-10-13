@@ -1,3 +1,672 @@
+// ============================================================
+// SEED MOCK DATA (Requirement 4: Loaded when local DB is empty)
+// ============================================================
+const SEED_SCHEMA = {
+    AMBULANCE: [
+        { column_name: "ID", data_type: "NUMBER", nullable: "N", is_primary_key: true },
+        { column_name: "VEHICLE_TYPE", data_type: "VARCHAR2(20)", nullable: "N", is_primary_key: false },
+        { column_name: "MODEL", data_type: "VARCHAR2(50)", nullable: "N", is_primary_key: false },
+        { column_name: "STATUS", data_type: "VARCHAR2(20)", nullable: "N", is_primary_key: false },
+        { column_name: "REMARKS", data_type: "VARCHAR2(100)", nullable: "Y", is_primary_key: false }
+    ],
+    DRIVER: [
+        { column_name: "DRIVER_ID", data_type: "NUMBER", nullable: "N", is_primary_key: true },
+        { column_name: "DRIVER_NAME", data_type: "VARCHAR2(120)", nullable: "N", is_primary_key: false },
+        { column_name: "DOB", data_type: "VARCHAR2(10)", nullable: "N", is_primary_key: false },
+        { column_name: "AGE", data_type: "NUMBER(3)", nullable: "Y", is_primary_key: false },
+        { column_name: "PHONE", data_type: "VARCHAR2(20)", nullable: "N", is_primary_key: false },
+        { column_name: "LICENSE_NO", data_type: "VARCHAR2(50)", nullable: "N", is_primary_key: false },
+        { column_name: "EXPERIENCE_YEARS", data_type: "NUMBER(2)", nullable: "Y", is_primary_key: false },
+        { column_name: "STATUS", data_type: "VARCHAR2(20)", nullable: "N", is_primary_key: false },
+        { column_name: "SALARY_MONTHLY", data_type: "NUMBER(10,2)", nullable: "N", is_primary_key: false }
+    ]
+};
+
+const SEED_AMBULANCES = [
+    { id: 101, vehicle_type: "BASIC", model: "Force Traveller 3350", status: "AVAILABLE", remarks: "Primary city emergency unit" },
+    { id: 102, vehicle_type: "ADVANCED", model: "Tata Winger Ambulance", status: "ON DUTY", remarks: "Trauma response dispatch" },
+    { id: 103, vehicle_type: "ICU", model: "Mercedes-Benz Sprinter ICU", status: "AVAILABLE", remarks: "Full ICU ventilator support" },
+    { id: 104, vehicle_type: "BASIC", model: "Mahindra Bolero Maxi Truck", status: "MAINTENANCE", remarks: "Scheduled brake maintenance" }
+];
+
+const SEED_DRIVERS = [
+    { driver_id: 201, driver_name: "Rajesh Kumar", dob: "15-08-1988", age: 38, phone: "9876543210", license_no: "DL-0420110012345", experience_years: 5, status: "AVAILABLE", salary_monthly: 25000.0, salary_annual: 300000.0 },
+    { driver_id: 202, driver_name: "Suresh Sharma", dob: "22-04-1985", age: 41, phone: "9812345678", license_no: "DL-0720150067890", experience_years: 7, status: "ON DUTY", salary_monthly: 28000.0, salary_annual: 336000.0 },
+    { driver_id: 203, driver_name: "Amit Singh", dob: "10-12-1994", age: 31, phone: "9701234567", license_no: "DL-0920180054321", experience_years: 3, status: "OFF DUTY", salary_monthly: 22000.0, salary_annual: 264000.0 },
+    { driver_id: 204, driver_name: "Vikram Verma", dob: "05-06-1982", age: 44, phone: "9654321098", license_no: "DL-1120200098765", experience_years: 9, status: "AVAILABLE", salary_monthly: 30000.0, salary_annual: 360000.0 }
+];
+
+function calculateAgeFromDob(dobStr) {
+    if (!dobStr || typeof dobStr !== "string") return null;
+    const parts = dobStr.trim().split("-");
+    if (parts.length !== 3) return null;
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+    const birthDate = new Date(year, month, day);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age >= 0 ? age : null;
+}
+
+// ============================================================
+// LOCAL BROWSER DB ENGINE (Requirements 2, 3 & 4)
+// ============================================================
+const LocalDB = {
+    SCHEMA_KEY: "AMS_SCHEMA",
+    AMBULANCES_KEY: "AMS_AMBULANCES",
+    DRIVERS_KEY: "AMS_DRIVERS",
+
+    init() {
+        if (!localStorage.getItem(this.SCHEMA_KEY)) {
+            localStorage.setItem(this.SCHEMA_KEY, JSON.stringify(SEED_SCHEMA));
+        }
+        if (!localStorage.getItem(this.AMBULANCES_KEY)) {
+            localStorage.setItem(this.AMBULANCES_KEY, JSON.stringify(SEED_AMBULANCES));
+        }
+        if (!localStorage.getItem(this.DRIVERS_KEY)) {
+            localStorage.setItem(this.DRIVERS_KEY, JSON.stringify(SEED_DRIVERS));
+        }
+    },
+
+    getSchema() {
+        this.init();
+        try {
+            return JSON.parse(localStorage.getItem(this.SCHEMA_KEY)) || SEED_SCHEMA;
+        } catch {
+            return SEED_SCHEMA;
+        }
+    },
+
+    saveSchema(schema) {
+        localStorage.setItem(this.SCHEMA_KEY, JSON.stringify(schema));
+    },
+
+    getAmbulances() {
+        this.init();
+        try {
+            return JSON.parse(localStorage.getItem(this.AMBULANCES_KEY)) || [];
+        } catch {
+            return [];
+        }
+    },
+
+    saveAmbulances(list) {
+        localStorage.setItem(this.AMBULANCES_KEY, JSON.stringify(list));
+    },
+
+    getDrivers() {
+        this.init();
+        try {
+            const list = JSON.parse(localStorage.getItem(this.DRIVERS_KEY)) || [];
+            return list.map(d => {
+                const item = { ...d };
+                if (item.salary_monthly !== undefined && item.salary_annual === undefined) {
+                    item.salary_annual = Number(item.salary_monthly) * 12;
+                }
+                if (item.dob && (item.age === undefined || item.age === null)) {
+                    item.age = calculateAgeFromDob(item.dob);
+                }
+                return item;
+            });
+        } catch {
+            return [];
+        }
+    },
+
+    saveDrivers(list) {
+        localStorage.setItem(this.DRIVERS_KEY, JSON.stringify(list));
+    },
+
+    addAmbulance(payload) {
+        const list = this.getAmbulances();
+        const id = Number(payload.id);
+        if (!id || id <= 0 || !Number.isInteger(id)) {
+            return { ok: false, status: 400, data: { message: "Invalid Ambulance ID. Must be positive integer." } };
+        }
+        if (list.some(a => Number(a.id) === id)) {
+            return { ok: false, status: 409, data: { message: `Ambulance with ID ${id} already exists.` } };
+        }
+        const record = { ...payload, id };
+        list.push(record);
+        this.saveAmbulances(list);
+        return { ok: true, status: 201, data: { message: `Ambulance #${id} created successfully.`, data: record } };
+    },
+
+    updateAmbulance(id, payload) {
+        const list = this.getAmbulances();
+        const targetId = Number(id);
+        const index = list.findIndex(a => Number(a.id) === targetId);
+        if (index === -1) {
+            return { ok: false, status: 404, data: { message: `Ambulance #${targetId} not found.` } };
+        }
+        list[index] = { ...list[index], ...payload, id: targetId };
+        this.saveAmbulances(list);
+        return { ok: true, status: 200, data: { message: `Ambulance #${targetId} updated successfully.`, data: list[index] } };
+    },
+
+    deleteAmbulance(id) {
+        const list = this.getAmbulances();
+        const targetId = Number(id);
+        const nextList = list.filter(a => Number(a.id) !== targetId);
+        if (nextList.length === list.length) {
+            return { ok: false, status: 404, data: { message: `Ambulance #${targetId} not found.` } };
+        }
+        this.saveAmbulances(nextList);
+        return { ok: true, status: 200, data: { message: `Ambulance #${targetId} deleted successfully.` } };
+    },
+
+    addDriver(payload) {
+        const list = this.getDrivers();
+        const driverId = Number(payload.driver_id);
+        if (!driverId || driverId <= 0 || !Number.isInteger(driverId)) {
+            return { ok: false, status: 400, data: { message: "Invalid Driver ID. Must be positive integer." } };
+        }
+        if (list.some(d => Number(d.driver_id) === driverId)) {
+            return { ok: false, status: 409, data: { message: `Driver with ID ${driverId} already exists.` } };
+        }
+        const phone = String(payload.phone || "").trim();
+        if (phone.length < 10) {
+            return { ok: false, status: 400, data: { message: "Phone number must be at least 10 digits." } };
+        }
+        if (list.some(d => String(d.phone || "").trim() === phone)) {
+            return { ok: false, status: 409, data: { message: `Phone number ${phone} is already registered.` } };
+        }
+        const license = String(payload.license_no || "").trim();
+        if (!license) {
+            return { ok: false, status: 400, data: { message: "License number is required." } };
+        }
+        if (list.some(d => String(d.license_no || "").trim().toUpperCase() === license.toUpperCase())) {
+            return { ok: false, status: 409, data: { message: `License number ${license} is already registered.` } };
+        }
+        const monthly = Number(payload.salary_monthly || 0);
+        const age = payload.age !== undefined && payload.age !== null ? Number(payload.age) : calculateAgeFromDob(payload.dob);
+        const record = {
+            ...payload,
+            driver_id: driverId,
+            phone,
+            license_no: license,
+            age,
+            salary_monthly: monthly,
+            salary_annual: monthly * 12
+        };
+        list.push(record);
+        this.saveDrivers(list);
+        return { ok: true, status: 201, data: { message: `Driver #${driverId} created successfully.`, data: record } };
+    },
+
+    updateDriver(id, payload) {
+        const list = this.getDrivers();
+        const targetId = Number(id);
+        const index = list.findIndex(d => Number(d.driver_id) === targetId);
+        if (index === -1) {
+            return { ok: false, status: 404, data: { message: `Driver #${targetId} not found.` } };
+        }
+        const phone = payload.phone !== undefined ? String(payload.phone).trim() : list[index].phone;
+        if (phone && phone.length < 10) {
+            return { ok: false, status: 400, data: { message: "Phone number must be at least 10 digits." } };
+        }
+        if (phone && list.some(d => Number(d.driver_id) !== targetId && String(d.phone || "").trim() === phone)) {
+            return { ok: false, status: 409, data: { message: `Phone number ${phone} is already registered to another driver.` } };
+        }
+        const license = payload.license_no !== undefined ? String(payload.license_no).trim() : list[index].license_no;
+        if (license && list.some(d => Number(d.driver_id) !== targetId && String(d.license_no || "").trim().toUpperCase() === license.toUpperCase())) {
+            return { ok: false, status: 409, data: { message: `License number ${license} is already registered to another driver.` } };
+        }
+        const monthly = payload.salary_monthly !== undefined ? Number(payload.salary_monthly) : list[index].salary_monthly;
+        const dob = payload.dob !== undefined ? payload.dob : list[index].dob;
+        const age = payload.age !== undefined && payload.age !== null ? Number(payload.age) : calculateAgeFromDob(dob);
+
+        list[index] = {
+            ...list[index],
+            ...payload,
+            driver_id: targetId,
+            phone,
+            license_no: license,
+            salary_monthly: monthly,
+            salary_annual: monthly * 12,
+            age
+        };
+        this.saveDrivers(list);
+        return { ok: true, status: 200, data: { message: `Driver #${targetId} updated successfully.`, data: list[index] } };
+    },
+
+    deleteDriver(id) {
+        const list = this.getDrivers();
+        const targetId = Number(id);
+        const nextList = list.filter(d => Number(d.driver_id) !== targetId);
+        if (nextList.length === list.length) {
+            return { ok: false, status: 404, data: { message: `Driver #${targetId} not found.` } };
+        }
+        this.saveDrivers(nextList);
+        return { ok: true, status: 200, data: { message: `Driver #${targetId} deleted successfully.` } };
+    },
+
+    executeDdl(rawSql) {
+        if (!rawSql || !rawSql.trim()) {
+            return { ok: false, status: 400, data: { message: "SQL statement is required." } };
+        }
+        const cleanSql = rawSql
+            .replace(/--.*$/gm, "")
+            .replace(/\/\*[\s\S]*?\*\//g, "")
+            .trim();
+        const upperSql = cleanSql.toUpperCase().replace(/\s+/g, " ");
+
+        // Strictly ban DROP TABLE commands
+        if (
+            /\bDROP\s+(?:ONLINE\s+|GLOBAL\s+TEMPORARY\s+|TEMPORARY\s+)?TABLE\b/i.test(upperSql) ||
+            upperSql.startsWith("DROP ") ||
+            upperSql.includes("DROP TABLE") ||
+            /^\s*DROP\b/i.test(upperSql)
+        ) {
+            return {
+                ok: false,
+                status: 403,
+                data: {
+                    success: false,
+                    message: "Command Prohibited: DROP TABLE commands are strictly banned to protect database integrity and prevent data loss."
+                }
+            };
+        }
+
+        const allowedStarts = ["ALTER ", "CREATE ", "RENAME ", "COMMENT ", "TRUNCATE "];
+        if (!allowedStarts.some(cmd => upperSql.startsWith(cmd))) {
+            return {
+                ok: false,
+                status: 400,
+                data: {
+                    success: false,
+                    message: "Invalid command: Only Oracle DDL statements (ALTER TABLE, CREATE, RENAME, COMMENT, TRUNCATE) are permitted."
+                }
+            };
+        }
+
+        const schema = this.getSchema();
+        let targetTable = null;
+        if (upperSql.startsWith("ALTER TABLE")) {
+            const parts = upperSql.split(" ");
+            if (parts.length >= 3) {
+                const candidate = parts[2].replace(/["']/g, "");
+                if (candidate === "AMBULANCE" || candidate === "DRIVER") {
+                    targetTable = candidate;
+                }
+            }
+            if (!targetTable) {
+                return {
+                    ok: false,
+                    status: 400,
+                    data: {
+                        success: false,
+                        message: "Invalid command: Target table must be AMBULANCE or DRIVER."
+                    }
+                };
+            }
+        }
+
+        if (targetTable) {
+            const tableCols = schema[targetTable] || [];
+            const records = targetTable === "AMBULANCE" ? this.getAmbulances() : this.getDrivers();
+
+            // ADD COLUMN
+            const addMatch = upperSql.match(/ALTER\s+TABLE\s+[A-Za-z0-9_]+\s+ADD\s*\(?\s*([A-Za-z0-9_]+)\s+([A-Za-z0-9_()]+)/i);
+            if (addMatch) {
+                const colName = addMatch[1].toUpperCase();
+                const colType = addMatch[2].toUpperCase();
+                if (tableCols.some(c => c.column_name === colName)) {
+                    return { ok: false, status: 400, data: { success: false, message: `Column '${colName}' already exists in ${targetTable}.` } };
+                }
+                const isNullable = upperSql.includes("NOT NULL") ? "N" : "Y";
+                tableCols.push({
+                    column_name: colName,
+                    data_type: colType,
+                    nullable: isNullable,
+                    is_primary_key: false
+                });
+                schema[targetTable] = tableCols;
+                this.saveSchema(schema);
+
+                const colKey = colName.toLowerCase();
+                records.forEach(r => { r[colKey] = null; });
+                if (targetTable === "AMBULANCE") this.saveAmbulances(records);
+                else this.saveDrivers(records);
+
+                return {
+                    ok: true,
+                    status: 200,
+                    data: {
+                        success: true,
+                        message: `Table ${targetTable} altered. Added column '${colName}' (${colType}).`
+                    }
+                };
+            }
+
+            // DROP COLUMN
+            const dropMatch = upperSql.match(/ALTER\s+TABLE\s+[A-Za-z0-9_]+\s+DROP\s+(?:COLUMN\s+)?\(?\s*([A-Za-z0-9_]+)\s*\)?/i);
+            if (dropMatch) {
+                const colName = dropMatch[1].toUpperCase();
+                if (colName === "ID" || colName === "DRIVER_ID") {
+                    return { ok: false, status: 400, data: { success: false, message: `Cannot drop primary key column ${colName}.` } };
+                }
+                const idx = tableCols.findIndex(c => c.column_name === colName);
+                if (idx === -1) {
+                    return { ok: false, status: 400, data: { success: false, message: `Column '${colName}' does not exist in ${targetTable}.` } };
+                }
+                tableCols.splice(idx, 1);
+                schema[targetTable] = tableCols;
+                this.saveSchema(schema);
+
+                const colKey = colName.toLowerCase();
+                records.forEach(r => { delete r[colKey]; });
+                if (targetTable === "AMBULANCE") this.saveAmbulances(records);
+                else this.saveDrivers(records);
+
+                return {
+                    ok: true,
+                    status: 200,
+                    data: {
+                        success: true,
+                        message: `Table ${targetTable} altered. Dropped column '${colName}'.`
+                    }
+                };
+            }
+
+            // RENAME COLUMN
+            const renameMatch = upperSql.match(/ALTER\s+TABLE\s+[A-Za-z0-9_]+\s+RENAME\s+COLUMN\s+([A-Za-z0-9_]+)\s+TO\s+([A-Za-z0-9_]+)/i);
+            if (renameMatch) {
+                const oldCol = renameMatch[1].toUpperCase();
+                const newCol = renameMatch[2].toUpperCase();
+                const colObj = tableCols.find(c => c.column_name === oldCol);
+                if (!colObj) {
+                    return { ok: false, status: 400, data: { success: false, message: `Column '${oldCol}' does not exist in ${targetTable}.` } };
+                }
+                colObj.column_name = newCol;
+                schema[targetTable] = tableCols;
+                this.saveSchema(schema);
+
+                const oldKey = oldCol.toLowerCase();
+                const newKey = newCol.toLowerCase();
+                records.forEach(r => {
+                    if (r[oldKey] !== undefined) {
+                        r[newKey] = r[oldKey];
+                        delete r[oldKey];
+                    }
+                });
+                if (targetTable === "AMBULANCE") this.saveAmbulances(records);
+                else this.saveDrivers(records);
+
+                return {
+                    ok: true,
+                    status: 200,
+                    data: {
+                        success: true,
+                        message: `Table ${targetTable} altered. Renamed column '${oldCol}' to '${newCol}'.`
+                    }
+                };
+            }
+
+            // MODIFY COLUMN
+            const modMatch = upperSql.match(/ALTER\s+TABLE\s+[A-Za-z0-9_]+\s+MODIFY\s*\(?\s*([A-Za-z0-9_]+)\s+([A-Za-z0-9_()]+)/i);
+            if (modMatch) {
+                const colName = modMatch[1].toUpperCase();
+                const newType = modMatch[2].toUpperCase();
+                const colObj = tableCols.find(c => c.column_name === colName);
+                if (!colObj) {
+                    return { ok: false, status: 400, data: { success: false, message: `Column '${colName}' does not exist in ${targetTable}.` } };
+                }
+                colObj.data_type = newType;
+                schema[targetTable] = tableCols;
+                this.saveSchema(schema);
+
+                return {
+                    ok: true,
+                    status: 200,
+                    data: {
+                        success: true,
+                        message: `Table ${targetTable} modified. Column '${colName}' data type updated to ${newType}.`
+                    }
+                };
+            }
+        }
+
+        if (upperSql.startsWith("TRUNCATE TABLE")) {
+            const parts = upperSql.split(" ");
+            const tbl = parts[2] ? parts[2].replace(/["']/g, "") : "";
+            if (tbl === "AMBULANCE") this.saveAmbulances([]);
+            else if (tbl === "DRIVER") this.saveDrivers([]);
+            return {
+                ok: true,
+                status: 200,
+                data: { success: true, message: `Table ${tbl} truncated successfully.` }
+            };
+        }
+
+        return {
+            ok: true,
+            status: 200,
+            data: { success: true, message: "Command executed successfully on database." }
+        };
+    }
+};
+
+if (typeof window !== "undefined") {
+    window.LocalDB = LocalDB;
+} else if (typeof global !== "undefined") {
+    global.LocalDB = LocalDB;
+}
+
+// ============================================================
+// TRANSPARENT API ROUTER & FALLBACK (Requirement 2)
+// Does NOT display local mode or offline indicators anywhere
+// ============================================================
+let isServerAvailable = null;
+
+async function handleWithLocalDB(url, options = {}) {
+    LocalDB.init();
+    const method = (options.method || "GET").toUpperCase();
+    let body = {};
+    if (options.body) {
+        try { body = typeof options.body === "string" ? JSON.parse(options.body) : options.body; } catch {}
+    }
+
+    const pathname = url.split("?")[0];
+    let result = { ok: true, status: 200, data: {} };
+
+    if (pathname === "/api/ambulances" && method === "GET") {
+        result = { ok: true, status: 200, data: LocalDB.getAmbulances() };
+    } else if (pathname === "/api/ambulances" && method === "POST") {
+        result = LocalDB.addAmbulance(body);
+    } else if (pathname.startsWith("/api/ambulances/") && method === "PUT") {
+        const id = pathname.split("/").pop();
+        result = LocalDB.updateAmbulance(id, body);
+    } else if (pathname.startsWith("/api/ambulances/") && method === "DELETE") {
+        const id = pathname.split("/").pop();
+        result = LocalDB.deleteAmbulance(id);
+    } else if (pathname === "/api/drivers" && method === "GET") {
+        result = { ok: true, status: 200, data: LocalDB.getDrivers() };
+    } else if (pathname === "/api/drivers" && method === "POST") {
+        result = LocalDB.addDriver(body);
+    } else if (pathname.startsWith("/api/drivers/") && method === "PUT") {
+        const id = pathname.split("/").pop();
+        result = LocalDB.updateDriver(id, body);
+    } else if (pathname.startsWith("/api/drivers/") && method === "DELETE") {
+        const id = pathname.split("/").pop();
+        result = LocalDB.deleteDriver(id);
+    } else if ((pathname === "/api/ddl/schema" || pathname === "/api/schema") && method === "GET") {
+        result = { ok: true, status: 200, data: { schema: LocalDB.getSchema() } };
+    } else if (pathname === "/api/ddl/execute" && method === "POST") {
+        result = LocalDB.executeDdl(body.sql);
+    } else if (pathname === "/api/db-status") {
+        result = { ok: true, status: 200, data: { connected: true, mode: "Connected" } };
+    } else if (pathname === "/api/login" && method === "POST") {
+        const validUsers = {
+            "admin": { password: "admin123", role: "admin" },
+            "manager": { password: "manager123", role: "manager" },
+            "chief": { password: "chief123", role: "chief" }
+        };
+        const u = validUsers[(body.username || "").toLowerCase()];
+        if (u && u.password === body.password) {
+            localStorage.setItem("AMS_CURRENT_USER", JSON.stringify({
+                username: (body.username || "").toLowerCase(),
+                role: u.role,
+                loggedIn: true
+            }));
+            result = { ok: true, status: 200, data: { success: true, username: body.username, role: u.role, redirect: "dashboard.html" } };
+        } else {
+            result = { ok: false, status: 401, data: { success: false, message: "Invalid username or password." } };
+        }
+    } else if (pathname === "/api/logout") {
+        localStorage.removeItem("AMS_CURRENT_USER");
+        result = { ok: true, status: 200, data: { success: true, redirect: "index.html" } };
+    } else {
+        result = { ok: true, status: 200, data: { success: true } };
+    }
+
+    return {
+        ok: result.ok !== false,
+        status: result.status || 200,
+        json: async () => result.data !== undefined ? result.data : result,
+        text: async () => JSON.stringify(result.data !== undefined ? result.data : result)
+    };
+}
+
+async function apiFetch(url, options = {}) {
+    if (isServerAvailable === false) {
+        return handleWithLocalDB(url, options);
+    }
+
+    try {
+        const response = await fetch(url, options);
+        // If static host returns 404 for an API endpoint
+        if (response.status === 404 && url.startsWith("/api/")) {
+            isServerAvailable = false;
+            return handleWithLocalDB(url, options);
+        }
+        isServerAvailable = true;
+        return response;
+    } catch (err) {
+        isServerAvailable = false;
+        return handleWithLocalDB(url, options);
+    }
+}
+
+// ============================================================
+// AUTHENTICATION & SESSION MANAGEMENT
+// ============================================================
+async function handleLoginSubmit(event) {
+    if (event) event.preventDefault();
+    const usernameInput = document.getElementById("loginUsername");
+    const passwordInput = document.getElementById("loginPassword");
+    const errorP = document.getElementById("loginError");
+    const submitBtn = document.getElementById("loginSubmitBtn");
+
+    const username = usernameInput ? usernameInput.value.trim() : "";
+    const password = passwordInput ? passwordInput.value.trim() : "";
+
+    if (!username || !password) {
+        if (errorP) {
+            errorP.innerText = "Please enter both username and password.";
+            errorP.style.display = "block";
+        }
+        return;
+    }
+
+    if (errorP) errorP.style.display = "none";
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Logging in...";
+    }
+
+    try {
+        const response = await apiFetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.success) {
+            localStorage.setItem("AMS_CURRENT_USER", JSON.stringify({
+                username: data.username || username,
+                role: data.role || "admin",
+                loggedIn: true
+            }));
+            LocalDB.init();
+            window.location.href = "dashboard.html";
+        } else {
+            if (errorP) {
+                errorP.innerText = data.message || "Invalid username or password.";
+                errorP.style.display = "block";
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Login";
+            }
+        }
+    } catch (err) {
+        if (errorP) {
+            errorP.innerText = "Authentication error. Please try again.";
+            errorP.style.display = "block";
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Login";
+        }
+    }
+}
+
+async function handleLogout() {
+    try {
+        await apiFetch("/api/logout", { method: "POST" });
+    } catch {}
+    localStorage.removeItem("AMS_CURRENT_USER");
+    window.location.href = "index.html";
+}
+
+function initAuthAndPermissions() {
+    let currentUser = null;
+    try {
+        currentUser = JSON.parse(localStorage.getItem("AMS_CURRENT_USER"));
+    } catch {}
+
+    const isDashboard = document.getElementById("ambulanceSection") !== null;
+    if (isDashboard && (!currentUser || !currentUser.loggedIn)) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    if (currentUser) {
+        const uEl = document.getElementById("headerUsername");
+        const rEl = document.getElementById("headerUserRole");
+        if (uEl) uEl.innerText = currentUser.username;
+        if (rEl) rEl.innerText = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+
+        const role = currentUser.role;
+        const cardTotalAmb = document.getElementById("cardTotalAmbulances");
+        const cardAvailAmb = document.getElementById("cardAvailableAmbulances");
+        const cardTotalDrv = document.getElementById("cardTotalDrivers");
+        const cardAvailDrv = document.getElementById("cardAvailableDrivers");
+        const driverSection = document.getElementById("driverSection");
+
+        if (role === "chief") {
+            if (driverSection) driverSection.style.display = "none";
+            if (cardTotalDrv) cardTotalDrv.style.display = "none";
+            if (cardAvailDrv) cardAvailDrv.style.display = "none";
+        } else if (role === "manager") {
+            if (cardTotalAmb) cardTotalAmb.style.display = "none";
+            if (cardAvailAmb) cardAvailAmb.style.display = "none";
+        }
+    }
+}
+
+// ============================================================
+// GLOBAL STATE & SCHEMA SPECIFICATIONS
+// ============================================================
 let ambulancesList = [];
 let editingAmbulance = false;
 let editingAmbulanceId = null;
@@ -32,12 +701,9 @@ const DEFAULT_DRIVER_COLUMNS = [
     { column_name: "SALARY_MONTHLY", data_type: "NUMBER(10,2)", nullable: "N", is_primary_key: false }
 ];
 
-// Base columns to distinguish originally existing columns from altered/added ones
 const BASE_AMBULANCE_COLS = new Set(["ID", "VEHICLE_TYPE", "MODEL", "STATUS", "REMARKS"]);
 const BASE_DRIVER_COLS = new Set(["DRIVER_ID", "DRIVER_NAME", "DOB", "AGE", "PHONE", "LICENSE_NO", "EXPERIENCE_YEARS", "STATUS", "SALARY_MONTHLY"]);
 
-
-// Utility function to escape HTML special characters
 function escapeHtml(str) {
     if (str === null || str === undefined) return "";
     return String(str)
@@ -48,8 +714,6 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
-
-// Format column name into human-readable label
 function formatColumnLabel(colName) {
     if (!colName) return "";
     const upper = colName.toUpperCase();
@@ -79,8 +743,6 @@ function formatColumnLabel(colName) {
     }).join(" ");
 }
 
-
-// Map Oracle data types to HTML input types
 function getInputType(dataType) {
     if (!dataType) return "text";
     const dt = dataType.toUpperCase();
@@ -89,8 +751,6 @@ function getInputType(dataType) {
     return "text";
 }
 
-
-// Format status badge pill
 function getStatusPill(status) {
     const s = (status || "").toUpperCase();
     let cls = "status-pill";
@@ -100,90 +760,21 @@ function getStatusPill(status) {
     return `<span class="${cls}">${escapeHtml(s)}</span>`;
 }
 
-
-// Helper function to derive age from DD-MM-YYYY format
-function calculateAgeFromDob(dobStr) {
-    if (!dobStr || typeof dobStr !== "string") return null;
-    const parts = dobStr.trim().split("-");
-    if (parts.length !== 3) return null;
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
-    if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900) return null;
-
-    const dob = new Date(year, month - 1, day);
-    if (dob.getFullYear() !== year || dob.getMonth() !== month - 1 || dob.getDate() !== day) {
-        return null;
-    }
-
-    const today = new Date();
-    if (dob > today) return null;
-
-    let age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-        age--;
-    }
-    return (age >= 0 && age <= 120) ? age : null;
-}
-
-
-function onDobInputChange() {
-    const dobInput = document.getElementById("driver_dob");
-    const preview = document.getElementById("driver_age_preview");
-    if (!dobInput || !preview) return;
-
-    const val = dobInput.value.trim();
-    if (!val) {
-        preview.value = "Derived Age: —";
-        return;
-    }
-
-    const age = calculateAgeFromDob(val);
-    if (age !== null) {
-        preview.value = `Derived Age: ${age} yrs`;
-    } else {
-        preview.value = val.length >= 10 ? "Invalid Date (DD-MM-YYYY)" : "Derived Age: —";
-    }
-}
-
-
-// Update minimal summary counts
-function updateSummary() {
-    const totalAmbulances = ambulancesList.length;
-    const availableAmbulances = ambulancesList.filter(
-        a => (a.status || "").toUpperCase() === "AVAILABLE"
-    ).length;
-
-    const totalDrivers = driversList.length;
-    const availableDrivers = driversList.filter(
-        d => (d.status || "").toUpperCase() === "AVAILABLE"
-    ).length;
-
-    const elTotalAmb = document.getElementById("summaryTotalAmbulances");
-    const elAvailAmb = document.getElementById("summaryAvailableAmbulances");
-    const elTotalDrv = document.getElementById("summaryTotalDrivers");
-    const elAvailDrv = document.getElementById("summaryAvailableDrivers");
-
-    if (elTotalAmb) elTotalAmb.innerText = totalAmbulances;
-    if (elAvailAmb) elAvailAmb.innerText = availableAmbulances;
-    if (elTotalDrv) elTotalDrv.innerText = totalDrivers;
-    if (elAvailDrv) elAvailDrv.innerText = availableDrivers;
-}
-
-
-// ============================================================
-// AMBULANCES
-// ============================================================
-
 function getAmbulanceColumns() {
     return (tableSchemas.AMBULANCE && tableSchemas.AMBULANCE.length > 0)
         ? tableSchemas.AMBULANCE
         : DEFAULT_AMBULANCE_COLUMNS;
 }
 
+function getDriverColumns() {
+    return (tableSchemas.DRIVER && tableSchemas.DRIVER.length > 0)
+        ? tableSchemas.DRIVER
+        : DEFAULT_DRIVER_COLUMNS;
+}
 
+// ============================================================
+// AMBULANCE SECTION RENDERING & ACTIONS
+// ============================================================
 function renderAmbulanceTableHeaders() {
     const thead = document.getElementById("ambulanceTableHead");
     if (!thead) return;
@@ -198,7 +789,6 @@ function renderAmbulanceTableHeaders() {
     ths += `<th>Actions</th>`;
     thead.innerHTML = `<tr>${ths}</tr>`;
 }
-
 
 function renderAmbulancesTable(list) {
     const table = document.getElementById("ambulanceTable");
@@ -246,7 +836,6 @@ function renderAmbulancesTable(list) {
     });
 }
 
-
 function buildAmbulanceFormBoxes() {
     const grid = document.getElementById("ambulanceFormGrid");
     if (!grid) return;
@@ -259,68 +848,60 @@ function buildAmbulanceFormBoxes() {
         const upper = c.column_name.toUpperCase();
         const label = formatColumnLabel(c.column_name);
         const isReq = c.nullable === "N";
+        const star = isReq ? '<span style="color:#ef4444;">*</span>' : "";
         const isNew = !BASE_AMBULANCE_COLS.has(upper);
-        const star = isReq ? `<span class="required-star">*</span>` : "";
-        const newBadge = isNew ? `<span class="new-col-badge">New</span>` : "";
+        const newBadge = isNew ? ' <span class="new-col-badge">New</span>' : "";
 
-        const group = document.createElement("div");
-        group.className = "form-field-group";
-        group.setAttribute("data-col-group", colKey);
+        const box = document.createElement("div");
+        box.className = "form-group";
 
         if (colKey === "id") {
-            group.innerHTML = `
-                <label class="field-label" for="ambulance_id">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="number" id="ambulance_id" data-col="id" placeholder="Ambulance ID (e.g. 101)" min="1" ${isReq ? "required" : ""}>
+            box.innerHTML = `
+                <label class="field-label" for="amb_id">${escapeHtml(label)} ${star}</label>
+                <input type="number" id="amb_id" data-col="id" placeholder="e.g. 105" min="1" ${isReq ? "required" : ""}>
             `;
         } else if (colKey === "vehicle_type") {
-            group.innerHTML = `
-                <label class="field-label" for="vehicle_type">${escapeHtml(label)} ${star}${newBadge}</label>
-                <select id="vehicle_type" data-col="vehicle_type" ${isReq ? "required" : ""}>
-                    <option value="">Select Vehicle Type</option>
-                    <option value="BASIC">Basic</option>
-                    <option value="ADVANCED">Advanced</option>
+            box.innerHTML = `
+                <label class="field-label" for="amb_vehicle_type">${escapeHtml(label)} ${star}${newBadge}</label>
+                <select id="amb_vehicle_type" data-col="vehicle_type" ${isReq ? "required" : ""}>
+                    <option value="">Select Type</option>
+                    <option value="BASIC">BASIC</option>
+                    <option value="ADVANCED">ADVANCED</option>
                     <option value="ICU">ICU</option>
                 </select>
             `;
-        } else if (colKey === "model") {
-            group.innerHTML = `
-                <label class="field-label" for="model">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="text" id="model" data-col="model" placeholder="Vehicle Model (e.g. Force Traveller)" maxlength="50" ${isReq ? "required" : ""}>
-            `;
         } else if (colKey === "status") {
-            group.innerHTML = `
-                <label class="field-label" for="ambulance_status">${escapeHtml(label)} ${star}${newBadge}</label>
-                <select id="ambulance_status" data-col="status" ${isReq ? "required" : ""}>
-                    <option value="">Select Status</option>
-                    <option value="AVAILABLE">Available</option>
-                    <option value="ON DUTY">On Duty</option>
-                    <option value="MAINTENANCE">Maintenance</option>
+            box.innerHTML = `
+                <label class="field-label" for="amb_status">${escapeHtml(label)} ${star}${newBadge}</label>
+                <select id="amb_status" data-col="status" ${isReq ? "required" : ""}>
+                    <option value="AVAILABLE">AVAILABLE</option>
+                    <option value="ON DUTY">ON DUTY</option>
+                    <option value="MAINTENANCE">MAINTENANCE</option>
                 </select>
             `;
         } else if (colKey === "remarks") {
-            group.innerHTML = `
-                <label class="field-label" for="remarks">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="text" id="remarks" data-col="remarks" placeholder="Remarks / Service Notes (Optional)" maxlength="100" ${isReq ? "required" : ""}>
+            box.innerHTML = `
+                <label class="field-label" for="amb_remarks">${escapeHtml(label)} ${star}${newBadge}</label>
+                <input type="text" id="amb_remarks" data-col="remarks" placeholder="Remarks / Service Notes (Optional)" maxlength="100" ${isReq ? "required" : ""}>
             `;
         } else {
-            // Dynamically added column! Box is added accordingly!
             const inputType = getInputType(c.data_type);
-            group.innerHTML = `
-                <label class="field-label" for="ambulance_col_${colKey}">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="${inputType}" id="ambulance_col_${colKey}" data-col="${colKey}" placeholder="Enter ${escapeHtml(label)}" ${isReq ? "required" : ""}>
+            box.innerHTML = `
+                <label class="field-label" for="amb_${colKey}">${escapeHtml(label)} ${star}${newBadge}</label>
+                <input type="${inputType}" id="amb_${colKey}" data-col="${colKey}" placeholder="${escapeHtml(label)} (${escapeHtml(c.data_type)})" ${isReq ? "required" : ""}>
             `;
         }
-        grid.appendChild(group);
+
+        grid.appendChild(box);
     });
 }
 
-
 async function loadAmbulances() {
     try {
-        const response = await fetch("/api/ambulances");
+        const response = await apiFetch("/api/ambulances");
 
         if (response.status === 401) {
-            window.location.href = "/";
+            window.location.href = "index.html";
             return;
         }
 
@@ -345,10 +926,11 @@ async function loadAmbulances() {
     }
 }
 
-
 function filterAmbulances() {
-    const searchText = (document.getElementById("ambulanceSearch").value || "").toLowerCase().trim();
-    const statusFilter = (document.getElementById("ambulanceFilter").value || "").toUpperCase().trim();
+    const searchInput = document.getElementById("ambulanceSearch");
+    const filterSelect = document.getElementById("ambulanceFilter");
+    const searchText = (searchInput ? searchInput.value : "").toLowerCase().trim();
+    const statusFilter = (filterSelect ? filterSelect.value : "").toUpperCase().trim();
 
     const filtered = ambulancesList.filter(a => {
         const matchesStatus = !statusFilter || (a.status || "").toUpperCase() === statusFilter;
@@ -361,23 +943,23 @@ function filterAmbulances() {
     renderAmbulancesTable(filtered);
 }
 
-
 function openAmbulanceForm() {
     editingAmbulance = false;
     editingAmbulanceId = null;
 
-    document.getElementById("ambulanceFormTitle").innerText = "Add New Ambulance";
-    document.getElementById("ambulanceForm").style.display = "block";
+    const titleEl = document.getElementById("ambulanceFormTitle");
+    const formEl = document.getElementById("ambulanceForm");
+    if (titleEl) titleEl.innerText = "Add New Ambulance";
+    if (formEl) formEl.style.display = "block";
 
     clearAmbulanceForm();
 }
-
 
 function closeAmbulanceForm() {
-    document.getElementById("ambulanceForm").style.display = "none";
+    const formEl = document.getElementById("ambulanceForm");
+    if (formEl) formEl.style.display = "none";
     clearAmbulanceForm();
 }
-
 
 function clearAmbulanceForm() {
     const grid = document.getElementById("ambulanceFormGrid");
@@ -388,7 +970,6 @@ function clearAmbulanceForm() {
         input.disabled = false;
     });
 }
-
 
 function editAmbulance(itemOrId) {
     let ambulance;
@@ -403,8 +984,10 @@ function editAmbulance(itemOrId) {
     editingAmbulance = true;
     editingAmbulanceId = ambulance.id;
 
-    document.getElementById("ambulanceFormTitle").innerText = `Modify Ambulance #${ambulance.id}`;
-    document.getElementById("ambulanceForm").style.display = "block";
+    const titleEl = document.getElementById("ambulanceFormTitle");
+    const formEl = document.getElementById("ambulanceForm");
+    if (titleEl) titleEl.innerText = `Modify Ambulance #${ambulance.id}`;
+    if (formEl) formEl.style.display = "block";
 
     const grid = document.getElementById("ambulanceFormGrid");
     if (!grid) return;
@@ -423,7 +1006,6 @@ function editAmbulance(itemOrId) {
         }
     });
 }
-
 
 async function saveAmbulance() {
     const grid = document.getElementById("ambulanceFormGrid");
@@ -468,13 +1050,13 @@ async function saveAmbulance() {
     try {
         let response;
         if (editingAmbulance) {
-            response = await fetch(`/api/ambulances/${editingAmbulanceId}`, {
+            response = await apiFetch(`/api/ambulances/${editingAmbulanceId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
         } else {
-            response = await fetch("/api/ambulances", {
+            response = await apiFetch("/api/ambulances", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -483,7 +1065,7 @@ async function saveAmbulance() {
 
         if (response.status === 401) {
             alert("Session expired. Please log in again.");
-            window.location.href = "/";
+            window.location.href = "index.html";
             return;
         }
 
@@ -495,11 +1077,10 @@ async function saveAmbulance() {
             loadAmbulances();
         }
     } catch (err) {
-        console.error("Network error:", err);
-        alert("Could not communicate with the server. Please check connection.");
+        console.error("Operation error:", err);
+        alert("Operation could not be completed.");
     }
 }
-
 
 async function deleteAmbulance(id) {
     if (!confirm(`Are you sure you want to delete ambulance #${id}?`)) {
@@ -507,12 +1088,12 @@ async function deleteAmbulance(id) {
     }
 
     try {
-        const response = await fetch(`/api/ambulances/${id}`, {
+        const response = await apiFetch(`/api/ambulances/${id}`, {
             method: "DELETE"
         });
 
         if (response.status === 401) {
-            window.location.href = "/";
+            window.location.href = "index.html";
             return;
         }
 
@@ -523,23 +1104,14 @@ async function deleteAmbulance(id) {
             loadAmbulances();
         }
     } catch (err) {
-        console.error("Delete error:", err);
-        alert("Failed to delete ambulance due to network/server issue.");
+        console.error("Deletion error:", err);
+        alert("Could not delete ambulance.");
     }
 }
 
-
 // ============================================================
-// DRIVERS
+// DRIVER SECTION RENDERING & ACTIONS
 // ============================================================
-
-function getDriverColumns() {
-    return (tableSchemas.DRIVER && tableSchemas.DRIVER.length > 0)
-        ? tableSchemas.DRIVER
-        : DEFAULT_DRIVER_COLUMNS;
-}
-
-
 function renderDriverTableHeaders() {
     const thead = document.getElementById("driverTableHead");
     if (!thead) return;
@@ -558,7 +1130,6 @@ function renderDriverTableHeaders() {
     ths += `<th>Actions</th>`;
     thead.innerHTML = `<tr>${ths}</tr>`;
 }
-
 
 function renderDriversTable(list) {
     const table = document.getElementById("driverTable");
@@ -630,7 +1201,6 @@ function renderDriversTable(list) {
     });
 }
 
-
 function buildDriverFormBoxes() {
     const grid = document.getElementById("driverFormGrid");
     if (!grid) return;
@@ -643,83 +1213,86 @@ function buildDriverFormBoxes() {
         const upper = c.column_name.toUpperCase();
         const label = formatColumnLabel(c.column_name);
         const isReq = c.nullable === "N";
+        const star = isReq ? '<span style="color:#ef4444;">*</span>' : "";
         const isNew = !BASE_DRIVER_COLS.has(upper);
-        const star = isReq ? `<span class="required-star">*</span>` : "";
-        const newBadge = isNew ? `<span class="new-col-badge">New</span>` : "";
+        const newBadge = isNew ? ' <span class="new-col-badge">New</span>' : "";
 
-        const group = document.createElement("div");
-        group.className = "form-field-group";
-        group.setAttribute("data-col-group", colKey);
+        const box = document.createElement("div");
+        box.className = "form-group";
 
         if (colKey === "driver_id") {
-            group.innerHTML = `
-                <label class="field-label" for="driver_id">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="number" id="driver_id" data-col="driver_id" placeholder="Driver ID (e.g. 201)" min="1" ${isReq ? "required" : ""}>
-            `;
-        } else if (colKey === "driver_name") {
-            group.innerHTML = `
-                <label class="field-label" for="driver_name">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="text" id="driver_name" data-col="driver_name" placeholder="Driver Full Name" maxlength="120" ${isReq ? "required" : ""}>
+            box.innerHTML = `
+                <label class="field-label" for="driver_id">${escapeHtml(label)} ${star}</label>
+                <input type="number" id="driver_id" data-col="driver_id" placeholder="e.g. 205" min="1" ${isReq ? "required" : ""}>
             `;
         } else if (colKey === "dob") {
-            group.innerHTML = `
-                <label class="field-label" for="driver_dob">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="text" id="driver_dob" data-col="dob" placeholder="DOB (DD-MM-YYYY)" maxlength="10" oninput="onDobInputChange()" ${isReq ? "required" : ""}>
+            box.innerHTML = `
+                <label class="field-label" for="dob">${escapeHtml(label)} ${star}${newBadge}</label>
+                <input type="text" id="dob" data-col="dob" placeholder="DD-MM-YYYY (e.g. 15-08-1990)" pattern="\\d{2}-\\d{2}-\\d{4}" ${isReq ? "required" : ""}>
+                <span style="font-size: 11px; color:#6b7280; margin-top:3px; display:block;">Format: DD-MM-YYYY</span>
             `;
         } else if (colKey === "age") {
-            group.innerHTML = `
-                <label class="field-label" for="driver_age_preview">${escapeHtml(label)} (Auto)</label>
-                <input type="text" id="driver_age_preview" data-col="age" placeholder="Derived Age: —" readonly tabindex="-1" class="readonly-age-field">
-            `;
-        } else if (colKey === "phone") {
-            group.innerHTML = `
-                <label class="field-label" for="driver_phone">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="text" id="driver_phone" data-col="phone" placeholder="Phone (min 10 digits)" maxlength="20" ${isReq ? "required" : ""}>
-            `;
-        } else if (colKey === "license_no") {
-            group.innerHTML = `
-                <label class="field-label" for="license_no">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="text" id="license_no" data-col="license_no" placeholder="Commercial License Number" maxlength="50" ${isReq ? "required" : ""}>
-            `;
-        } else if (colKey === "experience_years") {
-            group.innerHTML = `
-                <label class="field-label" for="experience_years">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="number" id="experience_years" data-col="experience_years" placeholder="Experience (Years)" min="0" max="60" value="0" ${isReq ? "required" : ""}>
+            box.innerHTML = `
+                <label class="field-label" for="driver_age_preview">Calculated Age${newBadge}</label>
+                <input type="text" id="driver_age_preview" data-col="age" class="readonly-age-field" value="Derived Age: —" readonly title="Automatically calculated from Date of Birth">
             `;
         } else if (colKey === "status") {
-            group.innerHTML = `
+            box.innerHTML = `
                 <label class="field-label" for="driver_status">${escapeHtml(label)} ${star}${newBadge}</label>
                 <select id="driver_status" data-col="status" ${isReq ? "required" : ""}>
-                    <option value="">Select Status</option>
-                    <option value="AVAILABLE">Available</option>
-                    <option value="ON DUTY">On Duty</option>
-                    <option value="OFF DUTY">Off Duty</option>
+                    <option value="AVAILABLE">AVAILABLE</option>
+                    <option value="ON DUTY">ON DUTY</option>
+                    <option value="OFF DUTY">OFF DUTY</option>
                 </select>
             `;
+        } else if (colKey === "phone") {
+            box.innerHTML = `
+                <label class="field-label" for="phone">${escapeHtml(label)} ${star}${newBadge}</label>
+                <input type="text" id="phone" data-col="phone" placeholder="Mobile Contact (10 digits)" maxlength="20" ${isReq ? "required" : ""}>
+            `;
+        } else if (colKey === "license_no") {
+            box.innerHTML = `
+                <label class="field-label" for="license_no">${escapeHtml(label)} ${star}${newBadge}</label>
+                <input type="text" id="license_no" data-col="license_no" placeholder="Commercial DL Number" maxlength="50" ${isReq ? "required" : ""}>
+            `;
+        } else if (colKey === "experience_years") {
+            box.innerHTML = `
+                <label class="field-label" for="experience_years">${escapeHtml(label)}${newBadge}</label>
+                <input type="number" id="experience_years" data-col="experience_years" placeholder="Years of Experience" min="0" max="50" value="0">
+            `;
         } else if (colKey === "salary_monthly") {
-            group.innerHTML = `
+            box.innerHTML = `
                 <label class="field-label" for="salary_monthly">${escapeHtml(label)} ${star}${newBadge}</label>
                 <input type="number" id="salary_monthly" data-col="salary_monthly" placeholder="Monthly Salary (₹)" min="0" step="0.01" ${isReq ? "required" : ""}>
             `;
         } else {
-            // Dynamically added column! Box is added accordingly!
             const inputType = getInputType(c.data_type);
-            group.innerHTML = `
-                <label class="field-label" for="driver_col_${colKey}">${escapeHtml(label)} ${star}${newBadge}</label>
-                <input type="${inputType}" id="driver_col_${colKey}" data-col="${colKey}" placeholder="Enter ${escapeHtml(label)}" ${isReq ? "required" : ""}>
+            box.innerHTML = `
+                <label class="field-label" for="drv_${colKey}">${escapeHtml(label)} ${star}${newBadge}</label>
+                <input type="${inputType}" id="drv_${colKey}" data-col="${colKey}" placeholder="${escapeHtml(label)} (${escapeHtml(c.data_type)})" ${isReq ? "required" : ""}>
             `;
         }
-        grid.appendChild(group);
-    });
-}
 
+        grid.appendChild(box);
+    });
+
+    const dobInput = document.getElementById("dob");
+    if (dobInput) {
+        dobInput.addEventListener("input", function() {
+            const ageInput = document.getElementById("driver_age_preview");
+            if (!ageInput) return;
+            const age = calculateAgeFromDob(this.value);
+            ageInput.value = age !== null ? `${age} yrs` : "Derived Age: —";
+        });
+    }
+}
 
 async function loadDrivers() {
     try {
-        const response = await fetch("/api/drivers");
+        const response = await apiFetch("/api/drivers");
 
         if (response.status === 401) {
-            window.location.href = "/";
+            window.location.href = "index.html";
             return;
         }
 
@@ -744,10 +1317,11 @@ async function loadDrivers() {
     }
 }
 
-
 function filterDrivers() {
-    const searchText = (document.getElementById("driverSearch").value || "").toLowerCase().trim();
-    const statusFilter = (document.getElementById("driverFilter").value || "").toUpperCase().trim();
+    const searchInput = document.getElementById("driverSearch");
+    const filterSelect = document.getElementById("driverFilter");
+    const searchText = (searchInput ? searchInput.value : "").toLowerCase().trim();
+    const statusFilter = (filterSelect ? filterSelect.value : "").toUpperCase().trim();
 
     const filtered = driversList.filter(d => {
         const matchesStatus = !statusFilter || (d.status || "").toUpperCase() === statusFilter;
@@ -760,23 +1334,23 @@ function filterDrivers() {
     renderDriversTable(filtered);
 }
 
-
 function openDriverForm() {
     editingDriver = false;
     editingDriverId = null;
 
-    document.getElementById("driverFormTitle").innerText = "Add New Driver";
-    document.getElementById("driverForm").style.display = "block";
+    const titleEl = document.getElementById("driverFormTitle");
+    const formEl = document.getElementById("driverForm");
+    if (titleEl) titleEl.innerText = "Add New Driver";
+    if (formEl) formEl.style.display = "block";
 
     clearDriverForm();
 }
-
 
 function closeDriverForm() {
-    document.getElementById("driverForm").style.display = "none";
+    const formEl = document.getElementById("driverForm");
+    if (formEl) formEl.style.display = "none";
     clearDriverForm();
 }
-
 
 function clearDriverForm() {
     const grid = document.getElementById("driverFormGrid");
@@ -794,7 +1368,6 @@ function clearDriverForm() {
     });
 }
 
-
 function editDriver(itemOrId) {
     let driver;
     if (typeof itemOrId === "object" && itemOrId !== null) {
@@ -808,8 +1381,10 @@ function editDriver(itemOrId) {
     editingDriver = true;
     editingDriverId = driver.driver_id;
 
-    document.getElementById("driverFormTitle").innerText = `Modify Driver #${driver.driver_id}`;
-    document.getElementById("driverForm").style.display = "block";
+    const titleEl = document.getElementById("driverFormTitle");
+    const formEl = document.getElementById("driverForm");
+    if (titleEl) titleEl.innerText = `Modify Driver #${driver.driver_id}`;
+    if (formEl) formEl.style.display = "block";
 
     const grid = document.getElementById("driverFormGrid");
     if (!grid) return;
@@ -823,16 +1398,14 @@ function editDriver(itemOrId) {
             input.value = driver.driver_id;
             input.disabled = true;
         } else if (col === "age") {
-            // Readonly age preview
+            const ageVal = driver.age !== undefined && driver.age !== null ? driver.age : calculateAgeFromDob(driver.dob);
+            input.value = ageVal !== null ? `${ageVal} yrs` : "Derived Age: —";
         } else {
             input.value = driver[col] !== undefined && driver[col] !== null ? driver[col] : "";
             input.disabled = false;
         }
     });
-
-    onDobInputChange();
 }
-
 
 async function saveDriver() {
     const grid = document.getElementById("driverFormGrid");
@@ -843,7 +1416,9 @@ async function saveDriver() {
 
     for (const input of inputs) {
         const col = input.getAttribute("data-col");
-        if (!col || col === "age") continue;
+        if (!col) continue;
+
+        if (col === "age") continue;
 
         const val = input.value.trim();
 
@@ -867,22 +1442,37 @@ async function saveDriver() {
                 return;
             }
             payload[col] = idNum;
-        } else if (col === "dob") {
-            if (val) {
-                const derivedAge = calculateAgeFromDob(val);
-                if (derivedAge === null) {
-                    alert("Invalid Date of Birth format. Please enter DOB in DD-MM-YYYY format (e.g. 15-08-1990).");
-                    input.focus();
-                    return;
-                }
-                if (derivedAge < 18 || derivedAge > 100) {
-                    alert(`Derived age (${derivedAge} years) is invalid. Driver must be between 18 and 100 years old.`);
-                    input.focus();
-                    return;
-                }
-                payload["age"] = derivedAge;
+        } else if (col === "dob" && val) {
+            const dobPattern = /^\d{2}-\d{2}-\d{4}$/;
+            if (!dobPattern.test(val)) {
+                alert("Date of birth must be in DD-MM-YYYY format (e.g. 15-08-1990).");
+                input.focus();
+                return;
+            }
+            const calculatedAge = calculateAgeFromDob(val);
+            if (calculatedAge === null || calculatedAge < 18 || calculatedAge > 70) {
+                alert("Driver age must be between 18 and 70 years based on Date of Birth.");
+                input.focus();
+                return;
             }
             payload[col] = val;
+            payload["age"] = calculatedAge;
+        } else if (col === "phone" && val) {
+            if (val.length < 10) {
+                alert("Phone number must have at least 10 digits.");
+                input.focus();
+                return;
+            }
+            payload[col] = val;
+        } else if (col === "salary_monthly" && val !== "") {
+            const salary = Number(val);
+            if (isNaN(salary) || salary < 0) {
+                alert("Monthly salary cannot be negative.");
+                input.focus();
+                return;
+            }
+            payload[col] = salary;
+            payload["salary_annual"] = salary * 12;
         } else if (input.type === "number" && val !== "") {
             payload[col] = Number(val);
         } else {
@@ -893,13 +1483,13 @@ async function saveDriver() {
     try {
         let response;
         if (editingDriver) {
-            response = await fetch(`/api/drivers/${editingDriverId}`, {
+            response = await apiFetch(`/api/drivers/${editingDriverId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
         } else {
-            response = await fetch("/api/drivers", {
+            response = await apiFetch("/api/drivers", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -908,7 +1498,7 @@ async function saveDriver() {
 
         if (response.status === 401) {
             alert("Session expired. Please log in again.");
-            window.location.href = "/";
+            window.location.href = "index.html";
             return;
         }
 
@@ -920,11 +1510,10 @@ async function saveDriver() {
             loadDrivers();
         }
     } catch (err) {
-        console.error("Network error:", err);
-        alert("Could not communicate with the server. Please check connection.");
+        console.error("Operation error:", err);
+        alert("Operation could not be completed.");
     }
 }
-
 
 async function deleteDriver(id) {
     if (!confirm(`Are you sure you want to delete driver #${id}?`)) {
@@ -932,12 +1521,12 @@ async function deleteDriver(id) {
     }
 
     try {
-        const response = await fetch(`/api/drivers/${id}`, {
+        const response = await apiFetch(`/api/drivers/${id}`, {
             method: "DELETE"
         });
 
         if (response.status === 401) {
-            window.location.href = "/";
+            window.location.href = "index.html";
             return;
         }
 
@@ -948,29 +1537,49 @@ async function deleteDriver(id) {
             loadDrivers();
         }
     } catch (err) {
-        console.error("Delete error:", err);
-        alert("Failed to delete driver due to network/server issue.");
+        console.error("Deletion error:", err);
+        alert("Could not delete driver.");
     }
 }
 
+// ============================================================
+// SUMMARY CARDS UPDATE
+// ============================================================
+function updateSummary() {
+    const totalAmb = ambulancesList.length;
+    const availAmb = ambulancesList.filter(a => (a.status || "").toUpperCase() === "AVAILABLE").length;
+    const totalDrv = driversList.length;
+    const availDrv = driversList.filter(d => (d.status || "").toUpperCase() === "AVAILABLE").length;
+
+    const elTotalAmb = document.getElementById("summaryTotalAmbulances");
+    const elAvailAmb = document.getElementById("summaryAvailableAmbulances");
+    const elTotalDrv = document.getElementById("summaryTotalDrivers");
+    const elAvailDrv = document.getElementById("summaryAvailableDrivers");
+
+    if (elTotalAmb) elTotalAmb.innerText = totalAmb;
+    if (elAvailAmb) elAvailAmb.innerText = availAmb;
+    if (elTotalDrv) elTotalDrv.innerText = totalDrv;
+    if (elAvailDrv) elAvailDrv.innerText = availDrv;
+}
 
 // ============================================================
 // TABLE SCHEMA DDL OPERATIONS & DYNAMIC COLUMN PROPAGATION
 // ============================================================
-
 function toggleTableSchema(tableName) {
     const panelId = tableName === "AMBULANCE" ? "ambulanceSchemaPanel" : "driverSchemaPanel";
     const panel = document.getElementById(panelId);
     if (!panel) return;
 
-    if (panel.style.display === "none" || !panel.style.display) {
-        panel.style.display = "block";
+    const isVisible = panel.style.display !== "none";
+    panel.style.display = isVisible ? "none" : "block";
+
+    if (!isVisible) {
         loadTableSchema();
-    } else {
-        panel.style.display = "none";
+        const inputId = tableName === "AMBULANCE" ? "ambulanceDdlInput" : "driverDdlInput";
+        const input = document.getElementById(inputId);
+        if (input) input.focus();
     }
 }
-
 
 function setDdlCommand(tableName, sql) {
     const inputId = tableName === "AMBULANCE" ? "ambulanceDdlInput" : "driverDdlInput";
@@ -987,7 +1596,6 @@ function setDdlCommand(tableName, sql) {
         output.innerText = "";
     }
 }
-
 
 async function executeTableDdl(tableName) {
     const inputId = tableName === "AMBULANCE" ? "ambulanceDdlInput" : "driverDdlInput";
@@ -1017,7 +1625,8 @@ async function executeTableDdl(tableName) {
     if (
         /\bDROP\s+(?:ONLINE\s+|GLOBAL\s+TEMPORARY\s+|TEMPORARY\s+)?TABLE\b/i.test(normalizedUpper) ||
         normalizedUpper.startsWith("DROP ") ||
-        normalizedUpper.includes("DROP TABLE")
+        normalizedUpper.includes("DROP TABLE") ||
+        /^\s*DROP\b/i.test(normalizedUpper)
     ) {
         if (output) {
             output.style.display = "block";
@@ -1035,7 +1644,7 @@ async function executeTableDdl(tableName) {
     }
 
     try {
-        const response = await fetch("/api/ddl/execute", {
+        const response = await apiFetch("/api/ddl/execute", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sql: rawSql })
@@ -1043,7 +1652,7 @@ async function executeTableDdl(tableName) {
 
         if (response.status === 401) {
             alert("Session expired. Please log in again.");
-            window.location.href = "/";
+            window.location.href = "index.html";
             return;
         }
 
@@ -1052,7 +1661,7 @@ async function executeTableDdl(tableName) {
         if (output) {
             if (response.ok) {
                 output.className = "ddl-panel-output";
-                output.innerText = `✓ Command Executed Successfully (${data.mode || "Database"}):\n${data.message || "Database schema modified successfully."}`;
+                output.innerText = `✓ Command Executed Successfully:\n${data.message || "Database schema modified successfully."}`;
             } else {
                 output.className = "ddl-panel-output error";
                 output.innerText = `✗ Command Failed:\n${data.message || "Syntax error or unsupported DDL statement."}`;
@@ -1060,7 +1669,6 @@ async function executeTableDdl(tableName) {
         }
 
         if (response.ok) {
-            // Immediately reload schema, refresh table headers, refresh form boxes, and reload table data!
             await loadTableSchema();
             await loadAmbulances();
             await loadDrivers();
@@ -1070,18 +1678,17 @@ async function executeTableDdl(tableName) {
         console.error("DDL execution error:", err);
         if (output) {
             output.className = "ddl-panel-output error";
-            output.innerText = "✗ Network error or server unreachable.";
+            output.innerText = "✗ Command execution failed.";
         }
     }
 }
-
 
 async function loadTableSchema() {
     const ambDiv = document.getElementById("ambulanceSchemaTable");
     const drvDiv = document.getElementById("driverSchemaTable");
 
     try {
-        const response = await fetch("/api/ddl/schema");
+        const response = await apiFetch("/api/ddl/schema");
         if (response.status === 401) return;
 
         const data = await response.json();
@@ -1094,7 +1701,6 @@ async function loadTableSchema() {
             tableSchemas.DRIVER = schema.DRIVER;
         }
 
-        // Render DDL panel schema tables
         if (ambDiv && tableSchemas.AMBULANCE) {
             ambDiv.innerHTML = renderSchemaTableHtml(tableSchemas.AMBULANCE);
         }
@@ -1102,20 +1708,15 @@ async function loadTableSchema() {
             drvDiv.innerHTML = renderSchemaTableHtml(tableSchemas.DRIVER);
         }
 
-        // Dynamically update site tables and adding boxes!
         renderAmbulanceTableHeaders();
         buildAmbulanceFormBoxes();
-        renderAmbulancesTable(ambulancesList);
-
         renderDriverTableHeaders();
         buildDriverFormBoxes();
-        renderDriversTable(driversList);
 
     } catch (err) {
-        console.error("Failed to load table schema:", err);
+        console.error("Error loading table schema:", err);
     }
 }
-
 
 function renderSchemaTableHtml(columns) {
     if (!columns || columns.length === 0) {
@@ -1146,22 +1747,18 @@ function renderSchemaTableHtml(columns) {
     `;
 }
 
-
 // ============================================================
-// THEME SWITCHER (DARK / LIGHT MODE)
+// THEME MANAGEMENT (DARK / LIGHT MODE)
 // ============================================================
-
 function initTheme() {
-    const savedTheme = localStorage.getItem("theme");
+    const saved = localStorage.getItem("theme");
     const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const activeTheme = savedTheme || (prefersDark ? "dark" : "light");
-    applyTheme(activeTheme);
+    applyTheme(saved || (prefersDark ? "dark" : "light"));
 }
 
 function toggleTheme() {
     const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-    const nextTheme = isDark ? "light" : "dark";
-    applyTheme(nextTheme);
+    applyTheme(isDark ? "light" : "dark");
 }
 
 function applyTheme(theme) {
@@ -1183,17 +1780,19 @@ function applyTheme(theme) {
     }
 }
 
-
 // ============================================================
-// INITIAL LOAD
+// INITIAL LOAD HANDLER
 // ============================================================
+if (typeof document !== "undefined") {
+    document.addEventListener("DOMContentLoaded", async () => {
+        initTheme();
 
-document.addEventListener("DOMContentLoaded", async () => {
-    // 0. Initialize theme (dark/light) from saved preference
-    initTheme();
-    // 1. First fetch active table schemas to configure dynamic columns and form boxes
-    await loadTableSchema();
-    // 2. Fetch and render ambulances & drivers data into the dynamically formatted tables
-    await loadAmbulances();
-    await loadDrivers();
-});
+        const isDashboard = document.getElementById("ambulanceSection") !== null;
+        if (isDashboard) {
+            initAuthAndPermissions();
+            await loadTableSchema();
+            await loadAmbulances();
+            await loadDrivers();
+        }
+    });
+}

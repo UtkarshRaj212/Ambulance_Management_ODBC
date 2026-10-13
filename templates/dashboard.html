@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ambulance Management System</title>
+    <title>Ambulance Management System - Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=21">
+    <link rel="stylesheet" href="static/style.css">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
@@ -26,10 +26,8 @@
             <h1>Ambulance Management System</h1>
         </div>
         <div class="header-right">
-            {% if username %}
-            <span class="user-role-badge">Logged in: <strong>{{ username }}</strong> ({{ user_role|capitalize }})</span>
-            {% endif %}
-            <a href="/logout" class="logout">Logout</a>
+            <span id="userRoleBadge" class="user-role-badge">Logged in: <strong id="headerUsername">Admin</strong> (<span id="headerUserRole">Admin</span>)</span>
+            <a href="javascript:void(0)" onclick="handleLogout()" class="logout">Logout</a>
             <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
                 <span id="themeToggleIcon">🌙</span>
                 <span id="themeToggleText">Dark Mode</span>
@@ -43,19 +41,19 @@
         <!-- SUMMARY OVERVIEW -->
         <!-- ================================================= -->
         <div class="summary-container">
-            <div class="summary-card" id="cardTotalAmbulances" {% if user_role == 'manager' %}style="display: none;"{% endif %}>
+            <div class="summary-card" id="cardTotalAmbulances">
                 <span class="summary-label">Total Ambulances</span>
                 <span class="summary-count" id="summaryTotalAmbulances">0</span>
             </div>
-            <div class="summary-card" id="cardAvailableAmbulances" {% if user_role == 'manager' %}style="display: none;"{% endif %}>
+            <div class="summary-card" id="cardAvailableAmbulances">
                 <span class="summary-label">Available Ambulances</span>
                 <span class="summary-count" id="summaryAvailableAmbulances">0</span>
             </div>
-            <div class="summary-card" id="cardTotalDrivers" {% if user_role == 'chief' %}style="display: none;"{% endif %}>
+            <div class="summary-card" id="cardTotalDrivers">
                 <span class="summary-label">Total Drivers</span>
                 <span class="summary-count" id="summaryTotalDrivers">0</span>
             </div>
-            <div class="summary-card" id="cardAvailableDrivers" {% if user_role == 'chief' %}style="display: none;"{% endif %}>
+            <div class="summary-card" id="cardAvailableDrivers">
                 <span class="summary-label">Available Drivers</span>
                 <span class="summary-count" id="summaryAvailableDrivers">0</span>
             </div>
@@ -65,7 +63,7 @@
         <!-- AMBULANCE MANAGEMENT -->
         <!-- ================================================= -->
 
-        <div id="ambulanceSection" {% if user_role == 'manager' %}style="display: none;"{% endif %}>
+        <div id="ambulanceSection">
             <div class="top-section">
                 <div class="section-title-group">
                     <h2>Ambulance Management</h2>
@@ -150,7 +148,7 @@
         <!-- DRIVER MANAGEMENT -->
         <!-- ================================================= -->
 
-        <div id="driverSection" {% if user_role == 'chief' %}style="display: none;"{% endif %}>
+        <div id="driverSection">
             <div class="top-section driver-section">
                 <div class="section-title-group">
                     <h2>Driver Management</h2>
@@ -233,7 +231,7 @@
 
     </main>
 
-    <script src="{{ url_for('static', filename='script.js') }}?v=21"></script>
+    <script src="static/script.js"></script>
 
 </body>
 
